@@ -1,3 +1,5 @@
+import untangle
+
 filename = '/home/sgzhang/perl5/MSF-DTA/revise_minor/drugbank_data/full_database.xml' # the xml file path for drugbank
 obj = untangle.parse(filename)
 
