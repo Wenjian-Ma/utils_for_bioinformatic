@@ -1,0 +1,131 @@
+import os,math
+import numpy as np
+from tqdm import tqdm
+#存储所有蛋白映射的字典
+dict_index = {}
+def takefirst(elem):
+    return elem[0]
+
+def get_index1(lst=None, item=''):
+    return [index for (index, value) in enumerate(lst) if value == item]
+
+with open('/media/administrator/SEAGATE-4T/public/PFP/Struct2Go/data_collect/prot_index.txt','r') as f:
+    for line in f:
+        pdb_chain_uid = line.strip().split('\t')[0]
+        unp_start = line.strip().split('\t')[1].split(':')[1]
+        unp_end = line.strip().split('\t')[2].split(':')[1]
+        author_start = line.strip().split('\t')[3].split(':')[1]
+        author_end = line.strip().split('\t')[4].split(':')[1]
+        dict_index[pdb_chain_uid]={'unp_start':unp_start}
+        dict_index[pdb_chain_uid].update({'unp_end':unp_end})
+        dict_index[pdb_chain_uid].update({'author_start': author_start})
+        dict_index[pdb_chain_uid].update({'author_end':author_end})
+
+#
+alphabet = {'ALA':'A','CYS':'C','ASP':'D','GLU':'E','PHE':'F','GLY':'G','HIS':'H','ILE':'I','LYS':'K','LEU':'L','MET':'M','ASN':'N','PRO':'P','GLN':'Q','ARG':'R','SER':'S','THR':'T','VAL':'V','TRP':'W','TYR':'Y'}
+
+all_pdb_prot = os.listdir('/media/administrator/SEAGATE-4T/public/PFP/Struct2Go/data_collect/pdb_file_2.0')
+
+existed_contact_map = os.listdir('/media/administrator/SEAGATE-4T/public/PFP/Struct2Go/data_collect/contact_map_dense_pdb_10.0')
+
+
+for i in tqdm(all_pdb_prot):
+    if i.strip().split('.')[0]+'.npy' in existed_contact_map:
+        continue
+    prot_sequence = []
+    TOTAL_Residue = {}
+    MISS_Residue = {}
+    chain = i.strip().split('_')[0].split('-')[1]
+    with open('/media/administrator/SEAGATE-4T/public/PFP/Struct2Go/data_collect/pdb_file_2.0/'+i,'r') as f:
+        for line in f:
+            if 'SEQRES' in line:
+                line = line.strip().split(' ')
+                line_filter = list(filter(lambda x: x != '', line))
+
+                if line_filter[2] == chain:
+                    for j in line_filter[4:]:
+                        prot_sequence.append(j)#真实结构的序列list，一个元素是一个残基
+
+    with open('/media/administrator/SEAGATE-4T/public/PFP/Struct2Go/data_collect/pdb_file_2.0/'+i,'r') as file_real:
+
+        author_start_index = dict_index[i.strip().split('.')[0]]['author_start']
+        author_end_index = dict_index[i.strip().split('.')[0]]['author_end']
+        for line in file_real:
+            if 'REMARK 465' in line and ' '+chain+' ' in line:
+                line_list_miss_residue = line.strip().split(' ')
+                line_filter = list(filter(lambda x: x != '', line_list_miss_residue))
+
+                if len(line_filter)==5 and chain==line_filter[3] and int(line_filter[4])>=int(author_start_index) and int(line_filter[4])<=int(author_end_index):
+                    try:
+                        MISS_Residue[int(line_filter[4])] = alphabet[line_filter[2]]+'\t'+'MISS'+'\t'+line_filter[2]
+                    except Exception as e:
+                        MISS_Residue[int(line_filter[4])] = 'X'+'\t'+'MISS'+'\t'+line_filter[2]
+                    #print(line_filter[2])
+
+
+            if ('ATOM' in line or 'HETATM' in line) and ' '+chain+' ' in line and ' CA ' in line:
+                line_list = list(line)
+                if '-' in line:
+                    index = get_index1(lst=line_list, item='-')
+                    for elem in index:
+                        if line_list[elem - 1] != ' ':
+                            line_list[elem] = ' ' + line_list[elem]
+
+                line = ''.join(line_list)
+                line_list = list(line)
+                if '.' in line:
+                    index = get_index1(lst=line_list, item='.')
+                    for elem in index[:3]:
+                        if line_list[elem + 4] != ' ':
+                            line_list[elem + 4] = ' ' + line_list[elem + 4]
+
+                line = ''.join(line_list)
+
+                line_list_ATOM = line.strip().split(' ')
+                line_filter_ATOM = list(filter(lambda x: x != '', line_list_ATOM))
+
+                if int(line_filter_ATOM[5])>=int(author_start_index) and int(line_filter_ATOM[5])<=int(author_end_index) and chain==line_filter_ATOM[4]:
+                    try:
+                        if line_filter_ATOM[0] == 'ATOM':
+                            TOTAL_Residue[int(line_filter_ATOM[5])] = alphabet[line_filter_ATOM[3]]+'\t'+line_filter_ATOM[6]+'\t'+line_filter_ATOM[7]+'\t'+line_filter_ATOM[8]+'\t'+line_filter_ATOM[3]
+                        elif line_filter_ATOM[0] == 'HETATM':
+                            TOTAL_Residue[int(line_filter_ATOM[5])] = alphabet[line_filter_ATOM[3]]+'\t'+line_filter_ATOM[6]+'\t'+line_filter_ATOM[7]+'\t'+line_filter_ATOM[8]+'\t'+line_filter_ATOM[3]
+                    except Exception as e:
+                        TOTAL_Residue[int(line_filter_ATOM[5])] = 'X' + '\t' + line_filter_ATOM[6] + '\t' + line_filter_ATOM[7] + '\t' + line_filter_ATOM[8]+'\t'+line_filter_ATOM[3]
+
+    TOTAL_Residue.update(MISS_Residue)#映射区段内的三维坐标残基(带三维坐标)+缺失残基
+    recard = []##三维坐标残基（带CA三维坐标）+缺失残基 按照残基顺序排序后的list   元素为元组(残基id,information)
+    TOTAL_Residue_new = {}#三维坐标残基（带CA三维坐标）+缺失残基 按照残基顺序排序后的字典
+    for item in TOTAL_Residue.items():
+        recard.append(item)
+    recard.sort(key=takefirst)
+    seq = ''#PDB映射区段的单字母蛋白序列
+    matrix = np.ones((len(recard), len(recard)))*999
+    for item in recard:
+        seq = seq+item[1].strip().split('\t')[0]
+        TOTAL_Residue_new[item[0]] = item[1]
+    for a in range(len(recard)):
+        for b in range(len(recard)):
+            if 'MISS' not in recard[a][1] and 'MISS' not in recard[b][1]:
+                try:
+                    x,y,z = float(recard[a][1].strip().split('\t')[1]),float(recard[a][1].strip().split('\t')[2]),float(recard[a][1].strip().split('\t')[3])
+
+                    x_, y_, z_ = float(recard[b][1].strip().split('\t')[1]), float(recard[b][1].strip().split('\t')[2]), float(recard[b][1].strip().split('\t')[3])
+                    if (len(str(recard[a][1].strip().split('\t')[1]).strip().split('.')[1])!=3) and (len(str(recard[a][1].strip().split('\t')[2]).strip().split('.')[1])!=3) and (len(str(recard[a][1].strip().split('\t')[3]).strip().split('.')[1])!=3) and (len(str(recard[b][1].strip().split('\t')[1]).strip().split('.')[1])!=3) and (len(str(recard[b][1].strip().split('\t')[2]).strip().split('.')[1])!=3) and (len(str(recard[b][1].strip().split('\t')[3]).strip().split('.')[1])!=3):
+                        raise Exception
+                except Exception as e:
+                    print(e)
+                    print(i)
+                    print(recard[a][1])
+                    print(recard[b][1])
+                    exit()
+
+                distance = math.sqrt(pow(x-x_,2)+pow(y-y_,2)+pow(z-z_,2))
+                matrix[a][b] = distance
+    contact_map = (matrix<10.0)+0
+    contact_map_dense = np.argwhere(contact_map == 1).transpose(1, 0)#torch格式的contact_map
+    np.save('/media/administrator/SEAGATE-4T/public/PFP/Struct2Go/data_collect/contact_map_dense_pdb_10.0/' + i.strip().split('.')[0] + '.npy', contact_map_dense)
+    # with open('/media/administrator/SEAGATE-4T/public/PFP/Struct2Go/data_collect/pdb_mapping_seq.txt','a') as f_seq:
+    #     f_seq.write('>'+i.strip().split('.')[0]+'\t'+seq+'\n')
+
+
