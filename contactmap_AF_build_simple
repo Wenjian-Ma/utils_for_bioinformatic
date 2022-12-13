@@ -1,0 +1,38 @@
+import os,math
+import numpy as np
+from tqdm import tqdm
+import math
+#存储所有蛋白映射的字典
+dict_index = {}
+def takefirst(elem):
+    return elem[0]
+
+def get_index1(lst=None, item=''):
+    return [index for (index, value) in enumerate(lst) if value == item]
+
+alphabet = {'ALA':'A','CYS':'C','ASP':'D','GLU':'E','PHE':'F','GLY':'G','HIS':'H','ILE':'I','LYS':'K','LEU':'L','MET':'M','ASN':'N','PRO':'P','GLN':'Q','ARG':'R','SER':'S','THR':'T','VAL':'V','TRP':'W','TYR':'Y'}
+
+record = []
+
+with open('/home/sgzhang/perl5/MSF-DTA/revise_minor/drugbank_data/approved_mol_drug_smiles/P06401.pdb','r') as f:
+    for line in f:
+        if 'ATOM ' in line and ' CA ' in line and ' A ' in line:
+            line = line.strip().split(' ')
+            line_filter = list(filter(lambda x: x != '', line))
+            if len(line_filter)!=12:
+                exit(-1)
+            residue_type = alphabet[line_filter[3]]
+            x = float(line_filter[6])
+            y = float(line_filter[7])
+            z = float(line_filter[8])
+            record.append([residue_type,x,y,z])
+
+contact_map = np.zeros((len(record),len(record)))
+
+for id_i,i in enumerate(record):
+    for id_j,j in enumerate(record):
+        residue = i[0]
+        distance = math.sqrt((i[1]-j[1])**2 + (i[2]-j[2])**2 + (i[3]-j[3])**2)
+        contact_map[id_i][id_j] = distance
+contact_map = (contact_map < 8.0) + 0
+np.save('/home/sgzhang/perl5/MSF-DTA/revise_minor/drugbank_data/approved_mol_drug_smiles/P06401.npy',contact_map)   
