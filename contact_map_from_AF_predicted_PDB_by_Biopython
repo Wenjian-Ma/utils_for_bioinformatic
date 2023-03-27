@@ -29,3 +29,8 @@ for i in tqdm(pdb_files):
     contact_map = (dist_matrix<10.0)+0
     #contact_map_dense = numpy.argwhere(contact_map == 1).transpose(1, 0)
     numpy.save('/home/sgzhang/perl5/TAGPPI-main/data/yeast/dictionary/contact_map_10.0/'+uid+'.npy',contact_map)
+    # sequence extraction from the .pdb files
+    # ppb = PDB.PPBuilder()
+    # for pp in ppb.build_peptides(model):
+    #     seq = str(pp.get_sequence())
+    #     length = len(seq)
