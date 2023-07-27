@@ -1,0 +1,11 @@
+    def _rbf(distance, num_rbf=16):
+        """
+        distance: input
+        num_rbf: central bin
+        """
+        D_min, D_max, D_count = 0., 20., num_rbf  #0-20埃米
+        D_mu = np.linspace(D_min, D_max, D_count)#0-20之间返回16个均匀间隔的数字
+        D_mu = D_mu.reshape(-1, 1)
+        D_sigma = (D_max - D_min) / D_count
+        RBF = np.exp(-((distance - D_mu) / D_sigma) ** 2).transpose(1,0)
+        return RBF
