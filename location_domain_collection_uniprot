@@ -1,0 +1,85 @@
+import re,math
+from collections import Counter
+import numpy as np
+import pandas as pd
+
+location_dict = {}#2497蛋白的亚细胞位置字典
+str_split = [';',',','.']
+with open('/media/ST-18T/Ma/cafa3/44689/uniprotkb_reviewed_true_AND_taxonomy_id_44689.tsv','r') as f:
+    for id,line in enumerate(f):
+        if id != 0:
+
+            uid = line.strip().split('\t')[0]
+            # if uid == 'P17695':
+            #     a = 0
+            if 'SUBCELLULAR LOCATION:' in line and '[' not in line:
+                location = line.strip().split('\t')[5].split(': ')[1]#.strip('SUBCELLULAR LOCATION:')
+                if 'Note=' in location:
+                    location = location.split('Note')[0]
+                if '{' in location:
+                    location = ' ' + location
+                    mask_split = re.findall('{.*?}', location)
+                    for mask in mask_split:
+                        location = location.replace(mask,'')
+                    # location4 = re.findall('; (.*) {', location)
+                    for str1 in str_split:
+                        location = location.replace(str1,'\t')
+                    location = [s.strip() for s in location.split('\t')]
+                    location_list = []
+                    for str1 in location:
+                        if str1 is not '' and str1 is not ' ':
+                            location_list.append(str1)
+
+                    print()
+                elif '{' not in location:
+                    for str1 in str_split:
+                        location  = location.replace(str1,'\t')
+                    location = [s.strip() for s in location.split('\t')]
+                    location_list = []
+                    for str1 in location:
+                        if str1 is not '' and str1 is not ' ':
+                            location_list.append(str1)
+            elif 'SUBCELLULAR LOCATION:' in line and '[' in line:
+                location = line.strip().split('\t')[2]  # .strip('SUBCELLULAR LOCATION:')
+                if 'Note=' in location:
+                    location = location.split('Note')[0]
+                mask_split = re.findall('SUBCELLULAR LOCATION: \[.*?\]: ', location)
+                for mask in mask_split:
+                    location = location.replace(mask,'')
+                if '{' in location:
+                    location = ' ' + location
+                    mask_split = re.findall('{.*?}', location)
+                    for mask in mask_split:
+                        location = location.replace(mask,'')
+                for str1 in str_split:
+                    location = location.replace(str1,'\t')
+                location = [s.strip() for s in location.split('\t')]
+                location_list = []
+                for str1 in location:
+                    if str1 is not '' and str1 is not ' ':
+                        location_list.append(str1)
+            else:
+                location_list = ['']
+            location_dict[uid] = location_list
+all_locations = []
+for i,j in location_dict.items():
+    all_locations.extend(j)
+count_dict = dict(Counter(all_locations))#106个location  酵母数据集
+
+
+
+
+uniprot_info = pd.read_csv('/media/ST-18T/Ma/cafa3/44689/uniprotkb_reviewed_true_AND_taxonomy_id_44689.tsv',sep='\t')
+
+all_domains = []
+
+for i in uniprot_info['Pfam'].values:
+    try:
+        if str(i) == 'nan':
+            continue
+        domains = i.split(';')
+        all_domains.extend(domains)
+    except Exception as e:
+        print(e)
+count_dict = Counter(all_locations)#106个location  酵母数据集
+print()
