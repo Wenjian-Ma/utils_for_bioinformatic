@@ -361,4 +361,4 @@ for specie in tqdm(species_15):
     if emb_vectors.shape[0]!=len(seq):
         raise Exception('Error!')
 
-    np.save('/media/ST-18T/Ma/HIF2GO/data/CAFA/'+specie+'/glove.npy')
+    np.save('/media/ST-18T/Ma/HIF2GO/data/CAFA/'+specie+'/glove.npy',emb_vectors)
