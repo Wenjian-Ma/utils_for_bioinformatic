@@ -1,7 +1,7 @@
 import sys
 import re
 
-
+#读取GO.obo    计算GO terms对应层数
 out_file = '/media/ST-18T/Ma/HIF2GO/data/revision/1.2/go_list.txt'
 
 out = open(out_file, 'w')
